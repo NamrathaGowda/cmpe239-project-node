@@ -3,8 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard</title>
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
+          crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.2/css/select2.min.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.2/js/select2.min.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <style>
+        .card   {
+            border: 1px solid black;
+        }
+
+    </style>
+
 </head>
 <body>
+<div class="container">
+    <div class="row">
+        <h3 style="display: inline-block">Company: </h3>
+        <select name="companySelector" id="companySelector" style="width: 25%">
+            <option value="" selected="selected"></option>
+        </select>
+    </div>
+    <div class="row" id="stockTicker">
 
+    </div>
+    <div class="row">
+        <div id="chartContainer"></div>
+    </div>
+</div>
+<script>
+    $(document).ready(function()    {
+        $("#companySelector").select2();
+        $.get("/listCompanies", function(data)  {
+            for(var i=0; i<data.length; i++)    {
+                $("#companySelector").append($('<option>', {value:data[i]._id, text: data[i].name}));
+            }
+        });
+        var companyTickerUpHTML = '<div class="col-lg-3 col-md-6 card"> <div class="row"> <h3 class="currentValue">current_value_holder<span class="glyphicon glyphicon-arrow-up" style="color: #3d8b3d"></span></h3> </div> <div class="row"> <p class="stockName">stock_name_holder</p> </div> </div>';
+        var companyTickerDownHTML = '<div class="col-lg-3 col-md-6 card"> <div class="row"> <h3 class="currentValue">current_value_holder<span class="glyphicon glyphicon-arrow-down" style="color: red"></span></h3> </div> <div class="row"> <p class="stockName">stock_name_holder</p> </div> </div>';
+        $.get("http://www.mocky.io/v2/5727e8581200007d0ac05a21").done(function(data) {
+            for (var i = 0; i < data.length; i++) {
+                if (data[i].upOrDown == "up") {
+                    var currentHTML = companyTickerUpHTML;
+                    currentHTML = currentHTML.replace("current_value_holder", data[i].preEOD).replace("stock_name_holder", data[i].stockID);
+                    $("#stockTicker").append(currentHTML);
+                }
+                else {
+                    var currentHTML = companyTickerDownHTML;
+                    currentHTML = currentHTML.replace("current_value_holder", data[i].preEOD).replace("stock_name_holder", data[i].stockID);
+                    $("#stockTicker").append(currentHTML);
+                }
+            }
+        });
+        $("#companySelector").change(function() {
+            if($("#chartContainer").highcharts())   {
+                $('#chartContainer').highcharts().destroy();
+            }
+            console.log($(this).val() + " selected");
+                var chartOptions = {
+                    chart: {
+                        renderTo: "chartContainer",
+                        type: "spline"
+                    },
+                    series: [{}]
+                };
+                var url = "http://www.mocky.io/v2/5727ed74120000f70ac05a2c";
+                $.getJSON(url, function(data)   {
+                    var dataForChart = [];
+                    for(var j=0;j<data.data.length; j++) {
+                        dataForChart.push([data.data[j].date, parseFloat(data.data[j].value)]);
+                    }
+                    chartOptions.series[0].data = dataForChart;
+                    var chart = new Highcharts.Chart(chartOptions);
+                });
+            });
+        });
+</script>
 </body>
 </html>

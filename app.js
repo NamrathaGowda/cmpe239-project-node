@@ -6,8 +6,11 @@ var app = require('express')();
 var bodyParser = require('body-parser');
 var http = require('http').Server(app);
 var passwordHash = require('password-hash');
+var session = require('express-session');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended:true}));
+app.use(session({secret: "namrathalovessomeone_donthitonher"}));
+app.use(express.static(__dirname));
 var  mongoose = require('mongoose');
 var mongooseOptions = {
     server: {
@@ -31,9 +34,20 @@ var mongooseUserSchema = mongoose.Schema({
     password: mongoose.Schema.Types.String,
     email: mongoose.Schema.Types.String
 });
+var mongooseCompanySchema = mongoose.Schema({
+    name: mongoose.Schema.Types.String,
+    key: mongoose.Schema.Types.String
+});
+var companyModel = mongoose.model('companies', mongooseCompanySchema);
 var collectionName = "users_table";
 var collectionModel = mongoose.model(collectionName, mongooseUserSchema);
+app.get("/static", express.static(__dirname));
+
 app.get("/", function(req, res){
+    var sess = req.session;
+    if(sess.user_id)    {
+        res.sendFile("dashboard.html", {root: __dirname})
+    }
    res.sendFile(__dirname + "/login.html");
 });
 app.post("/login", function(req, res){
@@ -48,7 +62,9 @@ app.post("/login", function(req, res){
                if(data.username == username) {
                    if(passwordHash.verify(password, data.password))  {
                        //set session
-                       res.redirect("/dashboard")
+                       var sess = req.session;
+                       sess.user_id = data._id;
+                       res.redirect("/dashboard");
                    }
                    else {
                        res.sendFile("login.html", {root: __dirname})
@@ -78,9 +94,44 @@ app.post("/register", function(req, res)    {
 
 });
 app.get("/dashboard", function (req, res) {
-    res.sendFile(__dirname + "/dashboard.html");
+    var sess = req.session;
+    if(sess.user_id)    {
+        console.log(sess.user_id);
+        res.header("Access-Control-Allow-Origin", "*");
+        res.header("Access-Control-Allow-Headers", "X-Requested-With");
+        res.sendFile(__dirname + "/dashboard.html");
+    }
+    else    {
+        res.sendFile(__dirname + "/login.html");
+    }
+
 });
 
-http.listen(3000, function()    {
-   console.log("Listening on *3000");
+app.get('/listCompanies', function(req, res)    {
+    var sess = req.session;
+    if(sess.user_id)    {
+        companyModel.find({}, function(err, docs)   {
+            if(!err)    {
+                res.send(docs);
+            }
+        })
+    }
+    else{
+        res.status(401).send("Unauthorized");
+    }
+});
+
+app.get("/logout", function(req, res)   {
+   req.session.destroy(function(err)    {
+       if(err)  {
+           console.log(err);
+       }
+       else {
+           res.redirect("/");
+       }
+   });
+});
+
+http.listen(3001, function()    {
+   console.log("Listening on *3001");
 });
